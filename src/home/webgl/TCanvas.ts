@@ -1,15 +1,15 @@
 import * as THREE from 'three'
-import { controls } from './utils/OrbitControls'
-import { gl } from './core/WebGL'
-import vertexShader from './shader/vert.glsl'
-import fragmentShader from './shader/frag.glsl'
-import { Assets, loadAssets } from './utils/assetLoader'
 import { resolvePath } from '../../scripts/utils'
+import { gl } from './core/WebGL'
+import { effects } from './effects/Effects'
+import fragmentShader from './shader/planeFrag.glsl'
+import vertexShader from './shader/planeVert.glsl'
+import { Assets, loadAssets } from './utils/assetLoader'
 import { calcCoveredTextureScale } from './utils/coveredTexture'
-import { AnimationFrame } from './utils/AnimationFrame'
+import { controls } from './utils/OrbitControls'
 
 export class TCanvas {
-  private animationFrame?: AnimationFrame
+  private animeID?: number
 
   private assets: Assets = {
     image: { path: resolvePath('resources/unsplash.jpg') },
@@ -19,7 +19,7 @@ export class TCanvas {
     loadAssets(this.assets).then(() => {
       this.init()
       this.createObjects()
-      this.animationFrame = new AnimationFrame(this.animationCallback)
+      this.setAnimationFrame()
     })
   }
 
@@ -27,6 +27,8 @@ export class TCanvas {
     gl.setup(this.parentNode.querySelector('.three-container')!)
     gl.scene.background = new THREE.Color('#133')
     gl.camera.position.z = 1.5
+
+    gl.setResizeCallback(() => effects.resize())
   }
 
   private createObjects() {
@@ -53,18 +55,26 @@ export class TCanvas {
 
   // ----------------------------------
   // animation frame
-  private animationCallback = (clock: THREE.Clock) => {
-    const dt = clock.getDelta()
+  private setAnimationFrame() {
+    const anime = () => {
+      const dt = gl.time.getDelta()
 
-    controls.update()
+      const plane = gl.getMesh<THREE.ShaderMaterial>('plane')
+      plane.material.uniforms.u_time.value += dt
 
-    const plane = gl.getMesh<THREE.ShaderMaterial>('plane')
-    plane.material.uniforms.u_time.value += dt
+      controls.update()
+      // gl.render()
+      effects.render()
+
+      requestAnimationFrame(anime)
+    }
+    this.animeID = requestAnimationFrame(anime)
   }
 
   // ----------------------------------
   // dispose
   dispose() {
-    this.animationFrame?.dispose()
+    gl.dispose()
+    this.animeID && cancelAnimationFrame(this.animeID)
   }
 }

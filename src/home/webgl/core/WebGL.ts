@@ -1,22 +1,21 @@
 import * as THREE from 'three'
-import { getSize } from './size'
 
 class WebGL {
   public renderer: THREE.WebGLRenderer
   public scene: THREE.Scene
   public camera: THREE.PerspectiveCamera
+  public readonly time = new THREE.Clock()
 
-  private resizeCallback?: (width: number, height: number, aspect: number) => void
+  private resizeCallback?: () => void
 
   constructor() {
-    const { width, height, aspect } = getSize()
+    const { width, height, aspect } = this.size
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     this.renderer.setPixelRatio(window.devicePixelRatio)
     this.renderer.setSize(width, height)
     this.renderer.shadowMap.enabled = true
     this.renderer.outputEncoding = THREE.sRGBEncoding
-    this.renderer.setSize(width, height)
 
     this.scene = new THREE.Scene()
     this.camera = new THREE.PerspectiveCamera(50, aspect, 0.01, 100)
@@ -25,20 +24,24 @@ class WebGL {
   }
 
   private handleResize = () => {
-    const { width, height, aspect } = getSize()
+    this.resizeCallback && this.resizeCallback()
 
-    this.resizeCallback && this.resizeCallback(width, height, aspect)
-
+    const { width, height, aspect } = this.size
     this.camera.aspect = aspect
     this.camera.updateProjectionMatrix()
     this.renderer.setSize(width, height)
+  }
+
+  get size() {
+    const { innerWidth: width, innerHeight: height } = window
+    return { width, height, aspect: width / height }
   }
 
   setup(container: HTMLElement) {
     container.appendChild(this.renderer.domElement)
   }
 
-  setResizeCallback(callback: (width: number, height: number, aspect: number) => void) {
+  setResizeCallback(callback: () => void) {
     this.resizeCallback = callback
   }
 
@@ -48,6 +51,12 @@ class WebGL {
 
   render() {
     this.renderer.render(this.scene, this.camera)
+  }
+
+  dispose() {
+    gl.scene.traverse((child) => {
+      if (child.type !== 'Scene') gl.scene.remove(child)
+    })
   }
 }
 
